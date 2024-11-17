@@ -1,0 +1,12 @@
+[Unit]
+Description=Websocket server forwarder for pubsub events
+After=network.target systemd-valkey_server.service
+
+[Service]
+ExecStart=/usr/bin/node /home/moon/demo/middleman.mjs
+Type=simple
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
+
