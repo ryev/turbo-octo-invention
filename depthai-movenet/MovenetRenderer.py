@@ -1,6 +1,13 @@
 import cv2
 import numpy as np
 
+import redis
+import json
+
+# Message publishing via redis pubsub
+msgPub = redis.Redis(host="localhost", port=6379, db=0)
+pubChannel = "video.tracker.1"
+
 # LINES_*_BODY are used when drawing the skeleton onto the source image. 
 # Each variable is a list of continuous lines.
 # Each line is a list of keypoints as defined at https://github.com/tensorflow/tfjs-models/tree/master/pose-detection#keypoint-diagram
@@ -37,9 +44,18 @@ class MovenetRenderer:
                     color = (0,255,0) 
                 elif i == 0:
                     color = (0,255,255)
+                    #print("nose", x_y[0], x_y[1], frame.shape[1])
+                    message = {"id":0, "label":"nose","status":"TRACKED", 
+                               "x": max(0,x_y[0])/frame.shape[1],
+                               "y": max(0,x_y[1])/frame.shape[0]}
+                    msgPub.publish(pubChannel, json.dumps(message))
                 else:
                     color = (0,0,255)
                 cv2.circle(frame, (x_y[0], x_y[1]), 4, color, -11)
+            else:
+                if i == 0:
+                    message = {"id":0, "label":"nose","status":"LOST"}
+                    msgPub.publish(pubChannel, json.dumps(message))
 
         if self.show_crop:
             cv2.rectangle(frame, (body.crop_region.xmin, body.crop_region.ymin), (body.crop_region.xmax, body.crop_region.ymax), (0,255,255), 2)

@@ -73,6 +73,7 @@ function pointerPrototype () {
 let pointers = [];
 let splatStack = [];
 pointers.push(new pointerPrototype());
+pointers.push(new pointerPrototype());
 
 const { gl, ext } = getWebGLContext(canvas);
 
@@ -204,6 +205,7 @@ function startGUI () {
     captureFolder.add(config, 'TRANSPARENT').name('transparent');
     captureFolder.add({ fun: captureScreenshot }, 'fun').name('take screenshot');
 
+    gui.close();   // actually, this just minimizes the control panel.
 }
 
 function captureScreenshot () {
@@ -1087,8 +1089,56 @@ function updateKeywords () {
     displayMaterial.setKeywords(displayKeywords);
 }
 
+
+function onWebSocketMsg ({data:msg}) {
+	const message = JSON.parse(msg);
+	if (message && message.id == 0 && message.label == "nose") {
+		let p = pointers[1];
+		message.x = 1 - message.x; // Reverse X direction: change X sense from camera to subject POV
+		if (message.status.includes("TRACKED")) {
+			let midX = message.x*canvas.width;
+			let midY = message.y*canvas.height;
+			if (p.down) {
+				// console.log("movedata", midX, midY);
+				updatePointerMoveData(p, midX, midY);
+			} else {
+				// console.log("downdata", midX, midY);
+				updatePointerDownData(p, -1, midX, midY);
+			}
+		} 
+		else if (message.status.includes("LOST")) {
+			// console.log("updata");
+			updatePointerUpData(p);
+		}
+        }
+}
+
+function startWebSocket (){
+    try {
+      let message = "";
+      const ws = new WebSocket("ws://localhost:3000/");
+      ws.onmessage = onWebSocketMsg; 
+
+      ws.onclose = function(e) {
+          console.log('Websocket closed.  Retry in 3 sec.', e.reason);
+          setTimeout(function() { startWebSocket(); }, 3000);
+     }
+     ws.onerror = function(e) {
+     console.log(e.message,'Closing socket');
+     ws.close();
+     }
+    } catch(e) {
+          setTimeout(function() { startWebSocket(); }, 3000);
+      console.log("Websocket error: ", e);
+    }
+
+}
+
+
 updateKeywords();
+startWebSocket();
 initFramebuffers();
+
 
 
 multipleSplats(parseInt(Math.random() * 20) + 5);
@@ -1388,9 +1438,11 @@ function correctRadius (radius) {
 canvas.addEventListener('mousedown', e => {
     let posX = scaleByPixelRatio(e.offsetX);
     let posY = scaleByPixelRatio(e.offsetY);
-    let pointer = pointers.find(p => p.id == -1);
-    if (pointer == null)
+    let pointer = pointers[0]; //.pointers.find(p => p.id == -1);
+    if (pointer == null) {
         pointer = new pointerPrototype();
+        pointers[0] = pointer;	
+    }
     updatePointerDownData(pointer, -1, posX, posY);
 });
 
