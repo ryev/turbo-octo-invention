@@ -12,6 +12,9 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 # Copy custom Nginx configuration file
 COPY nginx.conf /etc/nginx/nginx.conf
 
+# Copy custom redis configuration file
+COPY redis.conf /etc/redis/redis.conf
+
 # Copy fail2ban configuration files
 COPY jail.local /etc/fail2ban/jail.local
 COPY nginx-redis.conf /etc/fail2ban/filter.d/nginx-redis.conf
@@ -24,7 +27,7 @@ RUN npm install
 WORKDIR /
 
 # Expose ports
-EXPOSE 80 6379
+EXPOSE 80 6379 3000
 
 # Start supervisord to manage Nginx, Redis, and Fail2ban
 CMD ["/usr/bin/supervisord"]
